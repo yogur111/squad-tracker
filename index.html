@@ -7,6 +7,38 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>小分队打卡站 🏕️</title>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <!-- Firebase SDK -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getDatabase, ref, set, onValue, get } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+    // ⚠️ 请将下面替换为你自己的 Firebase 配置
+    // 获取方式：Firebase 控制台 → 项目设置 → 你的应用 → firebaseConfig
+    const firebaseConfig = {
+      apiKey: "AIzaSyAmZrMO9O86PXYLNNC7D7GacIhgtXSoQf8",
+      authDomain: "jianfei-2744b.firebaseapp.com",
+      databaseURL: "https://jianfei-2744b-default-rtdb.firebaseio.com",
+      projectId: "jianfei-2744b",
+      storageBucket: "jianfei-2744b.firebasestorage.app",
+      messagingSenderId: "479159555380",
+      appId: "1:479159555380:web:c67068732511fd804e0161",
+      measurementId: "G-D84GYDJ9GD"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    // 将 Firebase 工具暴露给全局
+    window._firebaseDb = db;
+    window._firebaseRef = ref;
+    window._firebaseSet = set;
+    window._firebaseOnValue = onValue;
+    window._firebaseGet = get;
+    window._firebaseReady = true;
+
+    // Firebase 就绪后初始化 app
+    document.dispatchEvent(new Event("firebase-ready"));
+  </script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
     ::-webkit-scrollbar { display: none; }
@@ -62,6 +94,22 @@
     .header-pts { text-align: right; }
     .header-pts-label { font-size: 11px; color: #666; }
     .header-pts-val { font-size: 20px; font-weight: 800; color: #FFE66D; }
+
+    /* ===== SYNC STATUS ===== */
+    .sync-bar {
+      position: fixed; top: 0; left: 50%; transform: translateX(-50%);
+      max-width: 420px; width: 100%; z-index: 1000;
+      display: flex; align-items: center; justify-content: center;
+      gap: 6px; padding: 6px 16px; font-size: 12px; font-weight: 600;
+      transition: all 0.3s;
+    }
+    .sync-bar.loading { background: rgba(100,100,120,0.95); color: #aaa; }
+    .sync-bar.saving  { background: rgba(255,180,50,0.95);  color: #1a1100; }
+    .sync-bar.saved   { background: rgba(78,205,196,0.95);  color: #001a18; }
+    .sync-bar.synced  { background: rgba(100,180,255,0.95); color: #001025; }
+    .sync-bar.error   { background: rgba(255,80,80,0.95);   color: #fff; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spin { display: inline-block; animation: spin 1s linear infinite; }
 
     /* ===== MEMBERS ===== */
     .members-row {
@@ -193,12 +241,6 @@
       width: 100%; background: transparent; border: none; border-bottom: 1px solid #fff;
       color: #fff; text-align: center; font-size: 13px; outline: none; font-family: inherit;
     }
-    .undo-btn {
-      background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15);
-      border-radius: 8px; padding: 5px 10px; color: #888; font-size: 11px;
-      cursor: pointer; font-family: inherit; flex-shrink: 0; white-space: nowrap;
-    }
-    .undo-btn:active { background: rgba(255,100,100,0.2); border-color: #FF6B6B; color: #FF6B6B; }
   </style>
 </head>
 <body>
@@ -291,26 +333,95 @@ const getWeekKey = () => {
   return `${now.getFullYear()}-W${week}`;
 };
 
-function loadState() {
+// ===== FIREBASE SYNC =====
+const DB_PATH = "squad_tracker_v1"; // 如需隔离多个房间可修改此路径
+let _isSaving = false;
+
+function getDefaultState() {
+  return {
+    members: MEMBERS_DEF.map(m => ({ ...m, points: 0, totalPoints: 0, redeemed: [] })),
+    logs: [],
+    teamLogs: [],
+  };
+}
+
+// 从 Firebase 加载一次初始数据
+async function loadStateFromFirebase() {
+  try {
+    const db = window._firebaseDb;
+    const snapshot = await window._firebaseGet(window._firebaseRef(db, DB_PATH));
+    if (snapshot.exists()) {
+      const data = snapshot.val();
+      return {
+        members: data.members || getDefaultState().members,
+        logs: data.logs || [],
+        teamLogs: data.teamLogs || [],
+      };
+    }
+  } catch (e) {
+    console.warn("Firebase 加载失败，使用本地缓存", e);
+  }
+  // 降级：读 localStorage
   try {
     return {
-      members: JSON.parse(localStorage.getItem("squad_members") || "null") ||
-        MEMBERS_DEF.map(m => ({ ...m, points: 0, totalPoints: 0, redeemed: [] })),
+      members: JSON.parse(localStorage.getItem("squad_members") || "null") || getDefaultState().members,
       logs: JSON.parse(localStorage.getItem("squad_logs") || "[]"),
       teamLogs: JSON.parse(localStorage.getItem("squad_team_logs") || "[]"),
     };
-  } catch { return { members: MEMBERS_DEF.map(m => ({...m,points:0,totalPoints:0,redeemed:[]})), logs:[], teamLogs:[] }; }
+  } catch { return getDefaultState(); }
 }
 
+// 保存到 Firebase（同时写 localStorage 做缓存备份）
 function saveState(s) {
+  // 本地缓存
   try {
     localStorage.setItem("squad_members", JSON.stringify(s.members));
     localStorage.setItem("squad_logs", JSON.stringify(s.logs));
     localStorage.setItem("squad_team_logs", JSON.stringify(s.teamLogs));
   } catch {}
+
+  // 写入 Firebase
+  if (window._firebaseReady) {
+    _isSaving = true;
+    ui.syncStatus = "saving";
+    const db = window._firebaseDb;
+    window._firebaseSet(window._firebaseRef(db, DB_PATH), {
+      members: s.members,
+      logs: s.logs,
+      teamLogs: s.teamLogs,
+      _updatedAt: Date.now(),
+    }).then(() => {
+      _isSaving = false;
+      ui.syncStatus = "saved";
+      // 3秒后清除状态提示
+      setTimeout(() => { if (ui.syncStatus === "saved") { ui.syncStatus = "idle"; render(); } }, 3000);
+    }).catch(e => {
+      _isSaving = false;
+      ui.syncStatus = "error";
+      console.error("Firebase 保存失败", e);
+    });
+  }
 }
 
-let state = loadState();
+// 开启实时监听——其他设备改数据后自动刷新
+function startRealtimeSync() {
+  if (!window._firebaseReady) return;
+  const db = window._firebaseDb;
+  window._firebaseOnValue(window._firebaseRef(db, DB_PATH), (snapshot) => {
+    if (_isSaving) return; // 忽略自己刚写入触发的回调
+    if (snapshot.exists()) {
+      const data = snapshot.val();
+      state.members = data.members || state.members;
+      state.logs = data.logs || [];
+      state.teamLogs = data.teamLogs || [];
+      ui.syncStatus = "synced";
+      render();
+      setTimeout(() => { if (ui.syncStatus === "synced") { ui.syncStatus = "idle"; render(); } }, 2000);
+    }
+  });
+}
+
+let state = getDefaultState();
 let ui = {
   activeTab: "home",
   activeMember: 1,
@@ -319,6 +430,7 @@ let ui = {
   editingName: null,
   encouragement: ENCOURAGEMENTS[Math.floor(Math.random() * ENCOURAGEMENTS.length)],
   notifStatus: "idle",
+  syncStatus: "loading", // loading | saving | saved | synced | error | idle
 };
 
 // ===== RENDER =====
@@ -339,7 +451,29 @@ function buildApp() {
 
   let html = ``;
 
-  // CELEBRATION OVERLAY
+  // SYNC STATUS BAR
+  if (ui.syncStatus === "loading") {
+    html += `<div class="sync-bar loading"><span class="spin">⟳</span> 正在加载数据…</div>`;
+  } else if (ui.syncStatus === "saving") {
+    html += `<div class="sync-bar saving"><span class="spin">⟳</span> 正在同步…</div>`;
+  } else if (ui.syncStatus === "saved") {
+    html += `<div class="sync-bar saved">✅ 已同步到云端</div>`;
+  } else if (ui.syncStatus === "synced") {
+    html += `<div class="sync-bar synced">🔄 数据已更新（来自其他设备）</div>`;
+  } else if (ui.syncStatus === "error") {
+    html += `<div class="sync-bar error">⚠️ 同步失败，请检查网络</div>`;
+  }
+
+  // Loading screen
+  if (ui.syncStatus === "loading") {
+    html += `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:80vh;gap:16px">
+      <div style="font-size:56px">🏕️</div>
+      <div style="font-size:18px;font-weight:700">小分队打卡站</div>
+      <div style="font-size:13px;color:#666">正在从云端加载数据…</div>
+    </div>`;
+    return html;
+  }
+
   if (ui.celebration) {
     html += `<div class="overlay" id="overlay-celebration">
       <div class="overlay-card">
@@ -481,10 +615,7 @@ function buildApp() {
       html += `<div class="task-row${done ? " done" : ""}" ${done ? "" : `onclick="completeTask('${task.id}','fitness')"`}>
         <div style="font-size:24px">${done ? "✅" : task.icon}</div>
         <div class="task-text">${task.text}</div>
-        ${done
-          ? `<button onclick="event.stopPropagation();undoTask('${task.id}')" class="undo-btn">撤销</button>`
-          : `<div class="task-pts">+${task.points}</div>`
-        }
+        <div class="task-pts${done ? " done" : ""}">${done ? "已完成" : "+" + task.points}</div>
       </div>`;
     });
     html += `<button class="all-tasks-btn" onclick="setTab('tasks')">查看全部任务 →</button></div>`;
@@ -508,10 +639,8 @@ function buildApp() {
           <div class="task-icon-wrap" style="background:${done?"rgba(255,255,255,0.1)":cat.color+"33"}">${done ? "✅" : task.icon}</div>
           <div class="task-text">${task.text}</div>
           <div style="text-align:right;flex-shrink:0">
-            ${done
-              ? `<button onclick="event.stopPropagation();undoTask('${task.id}')" class="undo-btn">撤销</button>`
-              : `<div style="font-size:13px;font-weight:700;color:#FFE66D">+${task.points}</div><div style="font-size:10px;color:#555">积分</div>`
-            }
+            <div style="font-size:13px;font-weight:700;color:${done?"#555":"#FFE66D"}">${done ? "完成" : "+"+task.points}</div>
+            <div style="font-size:10px;color:#555">积分</div>
           </div>
         </div>`;
       });
@@ -734,20 +863,6 @@ function redeemReward(rewardId) {
 
 function closeReward() { ui.rewardModal = null; render(); }
 
-function undoTask(taskId) {
-  const today = getToday();
-  const log = state.logs.find(l => l.taskId === taskId && l.memberId === ui.activeMember && l.date === today);
-  if (!log) return;
-  state.logs = state.logs.filter(l => l !== log);
-  state.members = state.members.map(m =>
-    m.id === ui.activeMember
-      ? { ...m, points: Math.max(0, m.points - log.points), totalPoints: Math.max(0, m.totalPoints - log.points) }
-      : m
-  );
-  saveState(state);
-  render();
-}
-
 async function requestNotif() {
   if (!("Notification" in window)) { ui.notifStatus = "unsupported"; render(); return; }
   const perm = await Notification.requestPermission();
@@ -774,7 +889,26 @@ function bindEvents() {
 }
 
 // ===== INIT =====
+// 先显示加载中，等 Firebase 就绪后再拉数据
 render();
+
+async function init() {
+  if (window._firebaseReady) {
+    state = await loadStateFromFirebase();
+    startRealtimeSync();
+    ui.syncStatus = "idle";
+    render();
+  } else {
+    // Firebase SDK 还没加载完，等待事件
+    document.addEventListener("firebase-ready", async () => {
+      state = await loadStateFromFirebase();
+      startRealtimeSync();
+      ui.syncStatus = "idle";
+      render();
+    }, { once: true });
+  }
+}
+init();
 </script>
 </body>
 </html>
