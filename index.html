@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>小分队打卡站 🏕️</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    ::-webkit-scrollbar { display: none; }
+    body {
+      font-family: 'Noto Sans SC', 'PingFang SC', 'Hiragino Sans GB', sans-serif;
+      background: #0F0F14;
+      min-height: 100vh;
+      color: #fff;
+      overscroll-behavior: none;
+    }
+    #app {
+      max-width: 420px;
+      margin: 0 auto;
+      min-height: 100vh;
+      position: relative;
+      overflow-x: hidden;
+    }
+    .bg-blob1 {
+      position: fixed; top: -100px; right: -80px; width: 300px; height: 300px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255,107,107,0.12) 0%, transparent 70%);
+      pointer-events: none; z-index: 0;
+    }
+    .bg-blob2 {
+      position: fixed; bottom: -80px; left: -60px; width: 250px; height: 250px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(78,205,196,0.1) 0%, transparent 70%);
+      pointer-events: none; z-index: 0;
+    }
+
+    /* ===== OVERLAY ===== */
+    .overlay {
+      position: fixed; inset: 0; z-index: 999;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.65);
+      backdrop-filter: blur(4px);
+    }
+    .overlay-card {
+      background: linear-gradient(135deg, #1a1a2e, #16213e);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 24px; padding: 40px 32px;
+      text-align: center; max-width: 300px; width: 88%;
+      animation: pop 0.4s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    .overlay-card.reward { border-color: rgba(255,230,109,0.3); }
+    @keyframes pop { from { transform: scale(0.7); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+    /* ===== HEADER ===== */
+    .header { padding: 28px 20px 0; position: relative; z-index: 1; }
+    .header-top { display: flex; justify-content: space-between; align-items: flex-start; }
+    .header-title { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
+    .header-sub { color: #888; font-size: 13px; margin-top: 4px; }
+    .header-pts { text-align: right; }
+    .header-pts-label { font-size: 11px; color: #666; }
+    .header-pts-val { font-size: 20px; font-weight: 800; color: #FFE66D; }
+
+    /* ===== MEMBERS ===== */
+    .members-row {
+      display: flex; gap: 10px; margin-top: 20px;
+      overflow-x: auto; padding-bottom: 4px; position: relative; z-index: 1;
+    }
+    .member-card {
+      flex: 0 0 auto; border-radius: 16px; padding: 10px 14px;
+      cursor: pointer; text-align: center; transition: all 0.2s; min-width: 90px;
+      background: rgba(255,255,255,0.05); border: 2px solid transparent;
+    }
+    .member-card.active { background: rgba(255,107,107,0.15); }
+    .member-avatar { font-size: 28px; }
+    .member-name { font-size: 13px; font-weight: 600; margin-top: 4px; color: #aaa; }
+    .member-card.active .member-name { color: #fff; }
+    .member-pts { font-size: 12px; color: #FFE66D; margin-top: 2px; }
+    .member-badge {
+      font-size: 10px; background: #FF6B6B; border-radius: 8px;
+      padding: 1px 6px; margin-top: 4px; color: #fff; display: inline-block;
+    }
+    .member-hint { color: #555; font-size: 11px; margin-top: 6px; }
+
+    /* ===== NAV ===== */
+    .nav {
+      display: flex; padding: 16px 20px 0; gap: 6px; position: relative; z-index: 1;
+    }
+    .nav-btn {
+      flex: 1; background: transparent; border: 1px solid transparent;
+      border-radius: 12px; padding: 8px 4px; cursor: pointer; color: #666;
+      font-size: 10px; font-weight: 600; display: flex; flex-direction: column;
+      align-items: center; gap: 2px; transition: all 0.2s;
+      font-family: inherit;
+    }
+    .nav-btn.active { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.2); color: #fff; }
+    .nav-icon { font-size: 16px; }
+
+    /* ===== CONTENT ===== */
+    .content { padding: 16px 20px 100px; position: relative; z-index: 1; }
+
+    /* ===== CARDS ===== */
+    .card {
+      background: rgba(255,255,255,0.04); border-radius: 20px; padding: 18px; margin-bottom: 16px;
+    }
+    .card-title { font-weight: 700; font-size: 15px; margin-bottom: 14px; }
+
+    /* ===== TASK ROW ===== */
+    .task-row {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.06);
+      cursor: pointer; transition: opacity 0.2s;
+    }
+    .task-row.done { opacity: 0.6; cursor: default; }
+    .task-row:last-child { border-bottom: none; }
+    .task-icon-wrap {
+      width: 36px; height: 36px; border-radius: 12px;
+      background: rgba(255,255,255,0.1); display: flex; align-items: center;
+      justify-content: center; font-size: 18px; flex-shrink: 0;
+    }
+    .task-text { flex: 1; font-size: 13px; line-height: 1.4; }
+    .task-pts { font-size: 13px; font-weight: 700; color: #FFE66D; text-align: right; flex-shrink: 0; }
+    .task-pts.done { color: #555; }
+
+    /* ===== PROGRESS BAR ===== */
+    .prog-row { margin-bottom: 12px; }
+    .prog-label { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 13px; }
+    .prog-track { height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; }
+    .prog-fill { height: 100%; border-radius: 4px; transition: width 0.6s ease; }
+
+    /* ===== STAT GRID ===== */
+    .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .stat-card { background: rgba(255,255,255,0.05); border-radius: 14px; padding: 12px 14px; }
+    .stat-label { font-size: 11px; color: #666; margin-bottom: 4px; }
+    .stat-val { font-size: 20px; font-weight: 800; }
+
+    /* ===== REWARD GRID ===== */
+    .reward-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .reward-item {
+      border-radius: 18px; padding: 16px; cursor: not-allowed;
+      opacity: 0.5; transition: all 0.2s;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      text-align: center;
+    }
+    .reward-item.can-afford {
+      opacity: 1; cursor: pointer;
+      background: rgba(255,255,255,0.07);
+      border-color: rgba(255,230,109,0.3);
+    }
+    .reward-item.can-afford:active { transform: scale(0.97); }
+    .reward-emoji { font-size: 36px; }
+    .reward-name { font-size: 13px; font-weight: 600; margin-top: 8px; line-height: 1.3; }
+    .reward-cost {
+      display: inline-block; margin-top: 8px; border-radius: 8px;
+      padding: 4px 10px; font-size: 12px; font-weight: 700;
+      background: rgba(255,255,255,0.1); color: #666; border: 1px solid transparent;
+    }
+    .reward-item.can-afford .reward-cost { background: #FFE66D22; color: #FFE66D; border-color: #FFE66D55; }
+    .reward-hint { font-size: 11px; color: #4ECDC4; margin-top: 8px; }
+
+    /* ===== TEAM TASK ===== */
+    .team-task {
+      border-radius: 18px; padding: 18px; margin-bottom: 12px;
+      cursor: pointer; transition: all 0.2s; opacity: 1;
+      display: flex; align-items: center; gap: 14px;
+    }
+    .team-task.done { opacity: 0.7; cursor: default; }
+    .team-task:active:not(.done) { transform: scale(0.98); }
+
+    /* ===== NOTIFICATION BTN ===== */
+    .notif-btn {
+      background: rgba(255,107,107,0.2); border: 1px solid rgba(255,107,107,0.4);
+      border-radius: 10px; padding: 8px 16px; color: #FF6B6B;
+      cursor: pointer; font-size: 12px; font-weight: 600; margin-top: 12px;
+      font-family: inherit;
+    }
+
+    /* ===== MISC ===== */
+    .section-label { font-size: 13px; font-weight: 700; color: #888; margin-bottom: 12px; padding-left: 4px; }
+    .all-tasks-btn {
+      width: 100%; margin-top: 12px; background: transparent;
+      border: 1px solid rgba(255,255,255,0.2); border-radius: 12px; padding: 10px;
+      color: #aaa; cursor: pointer; font-size: 13px; font-family: inherit;
+    }
+    .redeem-log-row {
+      display: flex; align-items: center; gap: 10px; padding: 10px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 13px; color: #666;
+    }
+    .inline-edit {
+      width: 100%; background: transparent; border: none; border-bottom: 1px solid #fff;
+      color: #fff; text-align: center; font-size: 13px; outline: none; font-family: inherit;
+    }
+    .undo-btn {
+      background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 8px; padding: 5px 10px; color: #888; font-size: 11px;
+      cursor: pointer; font-family: inherit; flex-shrink: 0; white-space: nowrap;
+    }
+    .undo-btn:active { background: rgba(255,100,100,0.2); border-color: #FF6B6B; color: #FF6B6B; }
+  </style>
+</head>
+<body>
+<div class="bg-blob1"></div>
+<div class="bg-blob2"></div>
+<div id="app"></div>
+
+<script>
+// ===== DATA =====
+const MEMBERS_DEF = [
+  { id: 1, name: "蛋总", avatar: "🥚", color: "#FF6B6B" },
+  { id: 2, name: "丽总", avatar: "🦦", color: "#4ECDC4" },
+  { id: 3, name: "小阮", avatar: "🌼", color: "#FFE66D" },
+];
+
+const TASK_CATEGORIES = {
+  fitness: {
+    key: "fitness", label: "身体健康", emoji: "💪", color: "#FF6B6B",
+    bg: "rgba(255,107,107,0.1)", description: "7天内完成3-5天健身，循序渐进减肥",
+    weeklyGoal: "本周目标：健身 3-5 天",
+    tasks: [
+      { id: "f1", text: "今日健身打卡（任意运动15分钟+）", points: 20, icon: "🏃" },
+      { id: "f2", text: "椭圆机 / 跑步 20分钟+", points: 30, icon: "🚴" },
+      { id: "f3", text: "力量训练 or 瑜伽", points: 25, icon: "🧘" },
+      { id: "f4", text: "今日步数达到8000步", points: 15, icon: "👟" },
+      { id: "f5", text: "健康饮食一整天（少油少糖）", points: 20, icon: "🥗" },
+      { id: "f6", text: "早睡（23:30前）", points: 15, icon: "🌙" },
+    ],
+  },
+  personal: {
+    key: "personal", label: "个人成长", emoji: "🌱", color: "#4ECDC4",
+    bg: "rgba(78,205,196,0.1)", description: "学习、正反馈、个人能力提升",
+    weeklyGoal: "本周目标：获得3次正向反馈",
+    tasks: [
+      { id: "p1", text: "收到他人正向反馈 / 夸奖", points: 30, icon: "⭐" },
+      { id: "p2", text: "学习新技能 or 读书30分钟", points: 25, icon: "📚" },
+      { id: "p3", text: "完成一件拖延许久的事", points: 35, icon: "✅" },
+      { id: "p4", text: "帮助他人解决了问题", points: 20, icon: "🤝" },
+      { id: "p5", text: "今日情绪管理得当", points: 15, icon: "😌" },
+      { id: "p6", text: "做了一件让自己开心的事", points: 15, icon: "🎉" },
+    ],
+  },
+  work: {
+    key: "work", label: "工作提升", emoji: "🚀", color: "#A78BFA",
+    bg: "rgba(167,139,250,0.1)", description: "项目推进、提升计划落地",
+    weeklyGoal: "本周目标：项目有2个关键里程碑",
+    tasks: [
+      { id: "w1", text: "项目获得关键进展 / 里程碑", points: 40, icon: "🎯" },
+      { id: "w2", text: "解决一个棘手问题", points: 35, icon: "🔧" },
+      { id: "w3", text: "完成一个提升计划的阶段目标", points: 30, icon: "📈" },
+      { id: "w4", text: "高质量完成今日工作任务", points: 20, icon: "💼" },
+      { id: "w5", text: "收到客户 / 领导好评", points: 40, icon: "🏆" },
+      { id: "w6", text: "做了一次有价值的分享或汇报", points: 25, icon: "🎤" },
+    ],
+  },
+};
+
+const TEAM_TASKS = [
+  { id: "t1", text: "全队同一天都完成健身打卡！", points: 60, icon: "🔥", category: "fitness" },
+  { id: "t2", text: "全队本周健身天数加起来达到12天", points: 80, icon: "💥", category: "fitness" },
+  { id: "t3", text: "全队都收到过正向反馈（本周内）", points: 70, icon: "🌟", category: "personal" },
+  { id: "t4", text: "小分队一起讨论一次工作/学习计划", points: 50, icon: "🧠", category: "work" },
+  { id: "t5", text: "全队本周工作均有进展", points: 90, icon: "🚀", category: "work" },
+  { id: "t6", text: "互相鼓励：给每个队员发一条加油消息", points: 40, icon: "💌", category: "personal" },
+];
+
+const REWARDS = [
+  { id: "r1", name: "一杯奶茶自由☕", cost: 80, icon: "🧋", desc: "你赢得了一杯奶茶！好好犒劳自己~", tier: "小奖励" },
+  { id: "r2", name: "一顿想吃的大餐", cost: 200, icon: "🍜", desc: "去吃那家想去很久的餐厅吧！", tier: "中奖励" },
+  { id: "r3", name: "一次想买的小物件", cost: 150, icon: "🛍️", desc: "买那个心心念念的小东西！", tier: "中奖励" },
+  { id: "r4", name: "周末懒觉特权", cost: 60, icon: "😴", desc: "今天可以睡到自然醒，无需内疚！", tier: "小奖励" },
+  { id: "r5", name: "一次下午茶", cost: 100, icon: "🍰", desc: "和朋友来一次悠闲下午茶时光", tier: "中奖励" },
+  { id: "r6", name: "一次SPA / 按摩", cost: 300, icon: "💆", desc: "你努力了很久，好好放松一下！", tier: "大奖励" },
+  { id: "r7", name: "一次短途旅行", cost: 500, icon: "✈️", desc: "小分队一起去旅行！你们都值得！", tier: "大奖励" },
+  { id: "r8", name: "团队庆功宴🎊", cost: 400, icon: "🥂", desc: "全队一起去吃一顿豪华庆功宴！", tier: "大奖励" },
+];
+
+const ENCOURAGEMENTS = [
+  "今天也是元气满满的一天！✨","你比昨天的自己更棒了 💪","坚持的样子真的很美 🌸",
+  "小分队今天也超厉害的！🔥","每一步都算数，加油！💫","你们的努力我都看见了 👀❤️",
+  "今天的汗水，是明天的光芒 ☀️","健康是最好的投资！继续！🚀","你值得所有美好 🌈","小目标，大成就！一起冲！⚡",
+];
+
+// ===== STATE =====
+const getToday = () => new Date().toISOString().split("T")[0];
+const getWeekKey = () => {
+  const now = new Date();
+  const startOfYear = new Date(now.getFullYear(), 0, 1);
+  const week = Math.ceil(((now - startOfYear) / 86400000 + startOfYear.getDay() + 1) / 7);
+  return `${now.getFullYear()}-W${week}`;
+};
+
+function loadState() {
+  try {
+    return {
+      members: JSON.parse(localStorage.getItem("squad_members") || "null") ||
+        MEMBERS_DEF.map(m => ({ ...m, points: 0, totalPoints: 0, redeemed: [] })),
+      logs: JSON.parse(localStorage.getItem("squad_logs") || "[]"),
+      teamLogs: JSON.parse(localStorage.getItem("squad_team_logs") || "[]"),
+    };
+  } catch { return { members: MEMBERS_DEF.map(m => ({...m,points:0,totalPoints:0,redeemed:[]})), logs:[], teamLogs:[] }; }
+}
+
+function saveState(s) {
+  try {
+    localStorage.setItem("squad_members", JSON.stringify(s.members));
+    localStorage.setItem("squad_logs", JSON.stringify(s.logs));
+    localStorage.setItem("squad_team_logs", JSON.stringify(s.teamLogs));
+  } catch {}
+}
+
+let state = loadState();
+let ui = {
+  activeTab: "home",
+  activeMember: 1,
+  celebration: null,
+  rewardModal: null,
+  editingName: null,
+  encouragement: ENCOURAGEMENTS[Math.floor(Math.random() * ENCOURAGEMENTS.length)],
+  notifStatus: "idle",
+};
+
+// ===== RENDER =====
+function render() {
+  const app = document.getElementById("app");
+  app.innerHTML = buildApp();
+  bindEvents();
+}
+
+function buildApp() {
+  const today = getToday();
+  const weekKey = getWeekKey();
+  const { members, logs, teamLogs } = state;
+  const currentMember = members.find(m => m.id === ui.activeMember);
+  const totalTeamPoints = members.reduce((s, m) => s + m.totalPoints, 0);
+  const todayLogs = logs.filter(l => l.date === today && l.memberId === ui.activeMember);
+  const todayTaskIds = todayLogs.map(l => l.taskId);
+
+  let html = ``;
+
+  // CELEBRATION OVERLAY
+  if (ui.celebration) {
+    html += `<div class="overlay" id="overlay-celebration">
+      <div class="overlay-card">
+        <div style="font-size:56px">${ui.celebration.icon}</div>
+        <div style="font-size:22px;font-weight:700;margin-top:12px;line-height:1.4">${ui.celebration.isTeam ? ui.celebration.text : "任务完成！"}</div>
+        ${!ui.celebration.isTeam ? `<div style="color:#aaa;margin-top:8px;font-size:14px">${ui.celebration.text}</div>` : ""}
+        <div style="margin-top:16px;font-size:32px;font-weight:800;color:#FFE66D">+${ui.celebration.points} 积分 ✨</div>
+        <div style="margin-top:12px;color:#888;font-size:13px">你太棒了！继续加油 💪</div>
+      </div>
+    </div>`;
+  }
+
+  // REWARD MODAL
+  if (ui.rewardModal) {
+    const r = ui.rewardModal;
+    html += `<div class="overlay" id="overlay-reward">
+      <div class="overlay-card reward">
+        <div style="font-size:64px">${r.icon}</div>
+        <div style="font-size:20px;font-weight:700;margin-top:12px">${r.name}</div>
+        <div style="color:#aaa;margin-top:10px;font-size:14px;line-height:1.6">${r.desc}</div>
+        <div style="margin-top:8px;color:#FFE66D;font-size:13px">花费 ${r.cost} 积分</div>
+        <button onclick="closeReward()" style="margin-top:20px;background:linear-gradient(135deg,#FFE66D,#FF6B6B);border:none;border-radius:12px;padding:12px 32px;color:#000;font-weight:700;font-size:15px;cursor:pointer;font-family:inherit">太好了！关闭 🎉</button>
+      </div>
+    </div>`;
+  }
+
+  // HEADER
+  html += `<div class="header">
+    <div class="header-top">
+      <div>
+        <div class="header-title">小分队打卡站 🏕️</div>
+        <div class="header-sub">${ui.encouragement}</div>
+      </div>
+      <div class="header-pts">
+        <div class="header-pts-label">团队总积分</div>
+        <div class="header-pts-val">${totalTeamPoints} ⭐</div>
+      </div>
+    </div>
+    <div class="members-row">`;
+
+  members.forEach(m => {
+    const isActive = m.id === ui.activeMember;
+    const hasFitnessToday = logs.some(l => l.date === today && l.memberId === m.id && l.category === "fitness");
+    html += `<div class="member-card${isActive ? " active" : ""}" 
+      style="border-color:${isActive ? m.color : "transparent"};background:${isActive ? `linear-gradient(135deg,${m.color}33,${m.color}22)` : "rgba(255,255,255,0.05)"}"
+      onclick="selectMember(${m.id})">
+      <div class="member-avatar">${m.avatar}</div>
+      ${ui.editingName === m.id
+        ? `<input class="inline-edit" id="name-input-${m.id}" value="${m.name}" onblur="saveName(${m.id})" onkeydown="if(event.key==='Enter')saveName(${m.id})">`
+        : `<div class="member-name" ondblclick="startEditName(${m.id},'${m.name}')">${m.name}</div>`
+      }
+      <div class="member-pts">${m.points} 分</div>
+      ${hasFitnessToday ? `<div class="member-badge">今日已打卡</div>` : ""}
+    </div>`;
+  });
+
+  html += `</div>
+    <div class="member-hint">💡 双击名字可修改</div>
+  </div>`;
+
+  // NAV
+  const tabs = [
+    { key: "home", label: "首页", icon: "🏠" },
+    { key: "tasks", label: "任务", icon: "✅" },
+    { key: "team", label: "团队", icon: "🤝" },
+    { key: "rewards", label: "奖励", icon: "🎁" },
+    { key: "stats", label: "统计", icon: "📊" },
+  ];
+  html += `<div class="nav">`;
+  tabs.forEach(t => {
+    html += `<button class="nav-btn${ui.activeTab === t.key ? " active" : ""}" onclick="setTab('${t.key}')">
+      <span class="nav-icon">${t.icon}</span>${t.label}
+    </button>`;
+  });
+  html += `</div>`;
+
+  // CONTENT
+  html += `<div class="content">`;
+
+  // ===== HOME =====
+  if (ui.activeTab === "home") {
+    const todayFitnessAll = members.every(m => logs.some(l => l.date === today && l.memberId === m.id && l.category === "fitness"));
+
+    html += `
+    <!-- Notification card -->
+    <div style="background:linear-gradient(135deg,rgba(255,107,107,0.2),rgba(255,107,107,0.05));border:1px solid rgba(255,107,107,0.3);border-radius:20px;padding:20px;margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="font-size:36px">⏰</div>
+        <div>
+          <div style="font-weight:700;font-size:15px">每天 19:30 健身打卡提醒</div>
+          <div style="color:#aaa;font-size:12px;margin-top:4px">打开浏览器通知以获得提醒</div>
+        </div>
+      </div>
+      ${buildNotifUI()}
+    </div>
+
+    <!-- Today status -->
+    <div class="card">
+      <div class="card-title">📅 今日状态</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">`;
+
+    members.forEach(m => {
+      const todayDone = logs.filter(l => l.date === today && l.memberId === m.id).length;
+      const hasFitness = logs.some(l => l.date === today && l.memberId === m.id && l.category === "fitness");
+      html += `<div style="background:linear-gradient(135deg,${m.color}22,${m.color}11);border:1px solid ${m.color}44;border-radius:14px;padding:12px;text-align:center">
+        <div style="font-size:24px">${m.avatar}</div>
+        <div style="font-size:12px;font-weight:600;margin-top:4px">${m.name}</div>
+        <div style="font-size:11px;color:#aaa;margin-top:2px">完成 ${todayDone} 项</div>
+        <div style="margin-top:6px;font-size:16px">${hasFitness ? "💪" : "😴"}</div>
+      </div>`;
+    });
+
+    html += `</div>`;
+    if (todayFitnessAll) {
+      html += `<div style="margin-top:14px;background:linear-gradient(135deg,#FFE66D33,#FF6B6B33);border:1px solid #FFE66D66;border-radius:12px;padding:10px 14px;text-align:center;font-size:13px;font-weight:700">🔥 今天全队都完成了健身打卡！太厉害了！！</div>`;
+    }
+    html += `</div>`;
+
+    // Weekly fitness progress
+    html += `<div class="card"><div class="card-title">💪 本周健身进度（目标3-5天）</div>`;
+    members.forEach(m => {
+      const days = new Set(logs.filter(l => l.memberId === m.id && l.weekKey === weekKey && l.category === "fitness").map(l => l.date)).size;
+      const pct = Math.min(days / 5, 1);
+      html += `<div class="prog-row">
+        <div class="prog-label">
+          <span>${m.avatar} ${m.name}</span>
+          <span style="color:${days >= 3 ? "#4ECDC4" : "#aaa"}">${days}/5天 ${days >= 5 ? "🏆" : days >= 3 ? "✅" : ""}</span>
+        </div>
+        <div class="prog-track"><div class="prog-fill" style="width:${pct*100}%;background:linear-gradient(90deg,${m.color},${m.color}aa)"></div></div>
+      </div>`;
+    });
+    html += `</div>`;
+
+    // Quick checkin
+    html += `<div style="background:linear-gradient(135deg,${currentMember.color}22,transparent);border:1px solid ${currentMember.color}44;border-radius:20px;padding:18px">
+      <div style="font-weight:700;margin-bottom:12px;font-size:15px">⚡ 快捷打卡（${currentMember.name}）</div>`;
+    TASK_CATEGORIES.fitness.tasks.slice(0, 3).forEach(task => {
+      const done = todayTaskIds.includes(task.id);
+      html += `<div class="task-row${done ? " done" : ""}" ${done ? "" : `onclick="completeTask('${task.id}','fitness')"`}>
+        <div style="font-size:24px">${done ? "✅" : task.icon}</div>
+        <div class="task-text">${task.text}</div>
+        ${done
+          ? `<button onclick="event.stopPropagation();undoTask('${task.id}')" class="undo-btn">撤销</button>`
+          : `<div class="task-pts">+${task.points}</div>`
+        }
+      </div>`;
+    });
+    html += `<button class="all-tasks-btn" onclick="setTab('tasks')">查看全部任务 →</button></div>`;
+  }
+
+  // ===== TASKS =====
+  if (ui.activeTab === "tasks") {
+    html += `<div style="font-weight:700;font-size:16px;margin-bottom:16px">✅ ${currentMember.name} 的任务</div>`;
+    Object.values(TASK_CATEGORIES).forEach(cat => {
+      html += `<div style="background:${cat.bg};border:1px solid ${cat.color}44;border-radius:20px;padding:18px;margin-bottom:16px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <div style="font-weight:700;font-size:15px">${cat.emoji} ${cat.label}</div>
+          <div style="font-size:11px;color:${cat.color};background:${cat.color}22;border-radius:8px;padding:3px 10px">${cat.weeklyGoal}</div>
+        </div>
+        <div style="color:#888;font-size:12px;margin-bottom:14px">${cat.description}</div>`;
+      cat.tasks.forEach(task => {
+        const done = todayTaskIds.includes(task.id);
+        html += `<div class="task-row${done ? " done" : ""}" 
+          style="background:${done?"rgba(255,255,255,0.04)":"rgba(255,255,255,0.06)"};border-radius:14px;padding:12px 14px;margin-bottom:8px;border:${done?"1px solid transparent":`1px solid ${cat.color}33`}"
+          ${done ? "" : `onclick="completeTask('${task.id}','${cat.key}')"`}>
+          <div class="task-icon-wrap" style="background:${done?"rgba(255,255,255,0.1)":cat.color+"33"}">${done ? "✅" : task.icon}</div>
+          <div class="task-text">${task.text}</div>
+          <div style="text-align:right;flex-shrink:0">
+            ${done
+              ? `<button onclick="event.stopPropagation();undoTask('${task.id}')" class="undo-btn">撤销</button>`
+              : `<div style="font-size:13px;font-weight:700;color:#FFE66D">+${task.points}</div><div style="font-size:10px;color:#555">积分</div>`
+            }
+          </div>
+        </div>`;
+      });
+      html += `</div>`;
+    });
+  }
+
+  // ===== TEAM =====
+  if (ui.activeTab === "team") {
+    html += `<div style="font-weight:700;font-size:16px;margin-bottom:4px">🤝 团队挑战</div>
+    <div style="color:#666;font-size:13px;margin-bottom:20px">完成后全队平分积分，一起成长！</div>
+    <div style="background:linear-gradient(135deg,rgba(255,230,109,0.15),rgba(255,107,107,0.1));border:1px solid rgba(255,230,109,0.3);border-radius:20px;padding:20px;margin-bottom:20px;text-align:center">
+      <div style="font-size:13px;color:#aaa">🏆 小分队总战力</div>
+      <div style="font-size:40px;font-weight:800;color:#FFE66D;margin-top:6px">${totalTeamPoints}</div>
+      <div style="font-size:12px;color:#666;margin-top:4px">积分</div>
+      <div style="display:flex;justify-content:center;gap:20px;margin-top:16px">`;
+    members.forEach(m => {
+      html += `<div style="text-align:center">
+        <div style="font-size:22px">${m.avatar}</div>
+        <div style="font-size:11px;color:#aaa;margin-top:2px">${m.name}</div>
+        <div style="font-size:14px;font-weight:700;color:${m.color}">${m.totalPoints}</div>
+      </div>`;
+    });
+    html += `</div></div>`;
+
+    TEAM_TASKS.forEach(task => {
+      const key = `${task.id}-${weekKey}`;
+      const done = teamLogs.find(t => t.key === key);
+      const cat = Object.values(TASK_CATEGORIES).find(c => c.key === task.category);
+      html += `<div class="team-task${done ? " done" : ""}"
+        style="background:${done?"rgba(255,255,255,0.03)":cat.color+"18"};border:1px solid ${done?"rgba(255,255,255,0.08)":cat.color+"44"}"
+        ${done ? "" : `onclick="completeTeamTask('${task.id}')"`}>
+        <div style="font-size:32px">${done ? "✅" : task.icon}</div>
+        <div style="flex:1">
+          <div style="font-size:14px;font-weight:600;line-height:1.4">${task.text}</div>
+          <div style="font-size:12px;color:#888;margin-top:4px">${cat.emoji} ${cat.label}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:16px;font-weight:800;color:${done?"#555":"#FFE66D"}">${done ? "完成✓" : "+"+task.points}</div>
+          ${!done ? `<div style="font-size:10px;color:#666">团队积分</div>` : ""}
+        </div>
+      </div>`;
+    });
+  }
+
+  // ===== REWARDS =====
+  if (ui.activeTab === "rewards") {
+    html += `<div style="font-weight:700;font-size:16px;margin-bottom:4px">🎁 奖励商店</div>
+    <div style="background:rgba(255,255,255,0.05);border-radius:14px;padding:12px 16px;margin-bottom:20px;display:flex;align-items:center;gap:10px">
+      <div style="font-size:28px">${currentMember.avatar}</div>
+      <div>
+        <div style="font-size:13px;color:#888">${currentMember.name} 当前可用积分</div>
+        <div style="font-size:22px;font-weight:800;color:#FFE66D">${currentMember.points} ⭐</div>
+      </div>
+    </div>`;
+
+    ["小奖励","中奖励","大奖励"].forEach(tier => {
+      const tierLabel = tier === "小奖励" ? "🌸 小奖励（60-100分）" : tier === "中奖励" ? "🌟 中奖励（100-200分）" : "💎 大奖励（300分+）";
+      html += `<div style="margin-bottom:24px">
+        <div class="section-label">${tierLabel}</div>
+        <div class="reward-grid">`;
+      REWARDS.filter(r => r.tier === tier).forEach(reward => {
+        const canAfford = currentMember.points >= reward.cost;
+        html += `<div class="reward-item${canAfford?" can-afford":""}" ${canAfford?`onclick="redeemReward('${reward.id}')"`:"" }>
+          <div class="reward-emoji">${reward.icon}</div>
+          <div class="reward-name">${reward.name}</div>
+          <div><span class="reward-cost">${reward.cost} 分</span></div>
+          ${canAfford?`<div class="reward-hint">点击兑换 →</div>`:""}
+        </div>`;
+      });
+      html += `</div></div>`;
+    });
+
+    if (currentMember.redeemed && currentMember.redeemed.length > 0) {
+      html += `<div style="margin-top:8px"><div style="font-size:13px;font-weight:700;color:#555;margin-bottom:12px">📜 兑换记录</div>`;
+      [...currentMember.redeemed].slice(-5).reverse().forEach(r => {
+        html += `<div class="redeem-log-row"><span style="font-size:20px">${r.icon}</span><span style="flex:1">${r.name}</span><span>${r.date}</span></div>`;
+      });
+      html += `</div>`;
+    }
+  }
+
+  // ===== STATS =====
+  if (ui.activeTab === "stats") {
+    html += `<div style="font-weight:700;font-size:16px;margin-bottom:20px">📊 小分队战报</div>`;
+    members.forEach(m => {
+      const memberLogs = logs.filter(l => l.memberId === m.id);
+      const weekLogs = memberLogs.filter(l => l.weekKey === weekKey);
+      const fitnessDays = new Set(weekLogs.filter(l => l.category === "fitness").map(l => l.date)).size;
+      const weekPoints = weekLogs.reduce((s, l) => s + l.points, 0);
+      const totalTasks = memberLogs.length;
+      const catFitness = memberLogs.filter(l => l.category === "fitness").length;
+      const catPersonal = memberLogs.filter(l => l.category === "personal").length;
+
+      html += `<div style="background:linear-gradient(135deg,${m.color}18,rgba(255,255,255,0.03));border:1px solid ${m.color}33;border-radius:20px;padding:20px;margin-bottom:16px">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+          <div style="font-size:36px">${m.avatar}</div>
+          <div>
+            <div style="font-weight:700;font-size:16px">${m.name}</div>
+            <div style="color:${m.color};font-size:13px">累计 ${m.totalPoints} 积分 · 完成 ${totalTasks} 项任务</div>
+          </div>
+        </div>
+        <div class="stat-grid">
+          <div class="stat-card"><div class="stat-label">⭐ 本周积分</div><div class="stat-val" style="color:${m.color}">${weekPoints}</div></div>
+          <div class="stat-card"><div class="stat-label">💪 本周健身</div><div class="stat-val" style="color:${m.color}">${fitnessDays}/5天</div></div>
+          <div class="stat-card"><div class="stat-label">🏃 健康任务</div><div class="stat-val" style="color:#FF6B6B">${catFitness}</div></div>
+          <div class="stat-card"><div class="stat-label">🌱 成长任务</div><div class="stat-val" style="color:#4ECDC4">${catPersonal}</div></div>
+        </div>
+        ${fitnessDays >= 5 ? `<div style="margin-top:12px;text-align:center;font-size:13px;color:#FFE66D">🏆 本周健身目标达成！</div>` : ""}
+        ${fitnessDays >= 3 && fitnessDays < 5 ? `<div style="margin-top:12px;text-align:center;font-size:13px;color:#4ECDC4">✅ 本周健身达标！继续加油</div>` : ""}
+      </div>`;
+    });
+
+    html += `<div style="background:rgba(255,255,255,0.04);border-radius:20px;padding:18px">
+      <div style="font-weight:700;margin-bottom:14px;font-size:15px">🤝 本周团队完成</div>`;
+    TEAM_TASKS.forEach(task => {
+      const done = teamLogs.find(t => t.key === `${task.id}-${weekKey}`);
+      html += `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.06)">
+        <span style="font-size:18px">${done ? "✅" : "⬜"}</span>
+        <span style="font-size:13px;color:${done?"#fff":"#555"};flex:1">${task.text}</span>
+        ${done ? `<span style="font-size:12px;color:#FFE66D">+${task.points}</span>` : ""}
+      </div>`;
+    });
+    html += `</div>`;
+  }
+
+  html += `</div>`; // end content
+  return html;
+}
+
+function buildNotifUI() {
+  if (ui.notifStatus === "idle") {
+    return `<button class="notif-btn" onclick="requestNotif()">开启每日19:30提醒 🔔</button>`;
+  } else if (ui.notifStatus === "granted") {
+    return `<div style="color:#4ECDC4;font-size:12px;margin-top:12px">✅ 提醒已开启！每天19:30会通知你</div>`;
+  } else if (ui.notifStatus === "denied") {
+    return `<div style="color:#FF6B6B;font-size:12px;margin-top:12px">❌ 请在浏览器设置中允许通知权限</div>`;
+  } else {
+    return `<div style="color:#888;font-size:12px;margin-top:12px">当前浏览器不支持通知功能</div>`;
+  }
+}
+
+// ===== ACTIONS =====
+function setTab(tab) { ui.activeTab = tab; render(); }
+function selectMember(id) { ui.activeMember = id; render(); }
+
+function startEditName(id, name) {
+  ui.editingName = id;
+  render();
+  const input = document.getElementById(`name-input-${id}`);
+  if (input) { input.focus(); input.select(); }
+}
+
+function saveName(id) {
+  const input = document.getElementById(`name-input-${id}`);
+  if (!input) return;
+  const name = input.value.trim();
+  if (name) {
+    state.members = state.members.map(m => m.id === id ? { ...m, name } : m);
+    saveState(state);
+  }
+  ui.editingName = null;
+  render();
+}
+
+function completeTask(taskId, category) {
+  const today = getToday();
+  const weekKey = getWeekKey();
+  const todayTaskIds = state.logs.filter(l => l.date === today && l.memberId === ui.activeMember).map(l => l.taskId);
+  if (todayTaskIds.includes(taskId)) return;
+
+  const cat = TASK_CATEGORIES[category];
+  const task = cat.tasks.find(t => t.id === taskId);
+  if (!task) return;
+
+  const log = { id: Date.now(), memberId: ui.activeMember, taskId, category, date: today, weekKey, points: task.points, taskText: task.text };
+  state.logs.push(log);
+  state.members = state.members.map(m =>
+    m.id === ui.activeMember ? { ...m, points: m.points + task.points, totalPoints: m.totalPoints + task.points } : m
+  );
+  saveState(state);
+
+  ui.celebration = { text: task.text, points: task.points, icon: task.icon };
+  render();
+  setTimeout(() => { ui.celebration = null; render(); }, 2500);
+}
+
+function completeTeamTask(taskId) {
+  const weekKey = getWeekKey();
+  const key = `${taskId}-${weekKey}`;
+  if (state.teamLogs.find(t => t.key === key)) return;
+
+  const task = TEAM_TASKS.find(t => t.id === taskId);
+  if (!task) return;
+
+  const perMember = Math.floor(task.points / 3);
+  state.teamLogs.push({ key, taskId, weekKey, date: getToday(), points: task.points });
+  state.members = state.members.map(m => ({ ...m, points: m.points + perMember, totalPoints: m.totalPoints + perMember }));
+  saveState(state);
+
+  ui.celebration = { text: "🎉 团队任务完成！全队各获得 " + perMember + " 积分", points: task.points, icon: task.icon, isTeam: true };
+  render();
+  setTimeout(() => { ui.celebration = null; render(); }, 3000);
+}
+
+function redeemReward(rewardId) {
+  const reward = REWARDS.find(r => r.id === rewardId);
+  const member = state.members.find(m => m.id === ui.activeMember);
+  if (!reward || !member || member.points < reward.cost) return;
+
+  state.members = state.members.map(m =>
+    m.id === ui.activeMember
+      ? { ...m, points: m.points - reward.cost, redeemed: [...(m.redeemed || []), { ...reward, date: getToday() }] }
+      : m
+  );
+  saveState(state);
+  ui.rewardModal = reward;
+  render();
+}
+
+function closeReward() { ui.rewardModal = null; render(); }
+
+function undoTask(taskId) {
+  const today = getToday();
+  const log = state.logs.find(l => l.taskId === taskId && l.memberId === ui.activeMember && l.date === today);
+  if (!log) return;
+  state.logs = state.logs.filter(l => l !== log);
+  state.members = state.members.map(m =>
+    m.id === ui.activeMember
+      ? { ...m, points: Math.max(0, m.points - log.points), totalPoints: Math.max(0, m.totalPoints - log.points) }
+      : m
+  );
+  saveState(state);
+  render();
+}
+
+async function requestNotif() {
+  if (!("Notification" in window)) { ui.notifStatus = "unsupported"; render(); return; }
+  const perm = await Notification.requestPermission();
+  if (perm === "granted") {
+    ui.notifStatus = "granted";
+    const now = new Date();
+    const target = new Date(); target.setHours(19, 30, 0, 0);
+    if (target <= now) target.setDate(target.getDate() + 1);
+    setTimeout(() => {
+      new Notification("🏃 小分队健身打卡时间！", { body: "19:30 了，该去运动啦！今天的任务还没完成哦 💪" });
+    }, target - now);
+  } else {
+    ui.notifStatus = "denied";
+  }
+  render();
+}
+
+function bindEvents() {
+  // Auto-focus name inputs after render
+  if (ui.editingName !== null) {
+    const input = document.getElementById(`name-input-${ui.editingName}`);
+    if (input) { input.focus(); }
+  }
+}
+
+// ===== INIT =====
+render();
+</script>
+</body>
+</html>
