@@ -6,7 +6,6 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>小分队打卡站 🏕️</title>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;600;700;800&display=swap" rel="stylesheet">
   <!-- Firebase SDK -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -43,7 +42,7 @@
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
     ::-webkit-scrollbar { display: none; }
     body {
-      font-family: 'Noto Sans SC', 'PingFang SC', 'Hiragino Sans GB', sans-serif;
+      font-family: 'PingFang SC', 'Noto Sans SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
       background: #0F0F14;
       min-height: 100vh;
       color: #fff;
@@ -263,11 +262,14 @@ const TASK_CATEGORIES = {
     weeklyGoal: "本周目标：健身 3-5 天",
     tasks: [
       { id: "f1", text: "今日健身打卡（任意运动15分钟+）", points: 20, icon: "🏃" },
-      { id: "f2", text: "椭圆机 / 跑步 20分钟+", points: 30, icon: "🚴" },
-      { id: "f3", text: "力量训练 or 瑜伽", points: 25, icon: "🧘" },
-      { id: "f4", text: "今日步数达到8000步", points: 15, icon: "👟" },
-      { id: "f5", text: "健康饮食一整天（少油少糖）", points: 20, icon: "🥗" },
-      { id: "f6", text: "早睡（23:30前）", points: 15, icon: "🌙" },
+      { id: "f2", text: "椭圆机 / 跑步 20分钟+", points: 30, icon: "🏃‍♀️" },
+      { id: "f3", text: "瑜伽练习（20分钟+）", points: 25, icon: "🧘" },
+      { id: "f4", text: "踩自行车（20分钟+）", points: 30, icon: "🚴" },
+      { id: "f5", text: "爬坡 / 坡度力量训练", points: 35, icon: "⛰️" },
+      { id: "f6", text: "力量训练（器械/自重）", points: 30, icon: "🏋️" },
+      { id: "f7", text: "今日步数达到8000步", points: 15, icon: "👟" },
+      { id: "f8", text: "健康饮食一整天（少油少糖）", points: 20, icon: "🥗" },
+      { id: "f9", text: "早睡（23:30前）", points: 15, icon: "🌙" },
     ],
   },
   personal: {
@@ -285,7 +287,7 @@ const TASK_CATEGORIES = {
   },
   work: {
     key: "work", label: "工作提升", emoji: "🚀", color: "#A78BFA",
-    bg: "rgba(167,139,250,0.1)", description: "项目推进、提升计划落地",
+    bg: "rgba(167,139,250,0.1)", description: "项目推进、提升计划落地、跳槽计划执行",
     weeklyGoal: "本周目标：项目有2个关键里程碑",
     tasks: [
       { id: "w1", text: "项目获得关键进展 / 里程碑", points: 40, icon: "🎯" },
@@ -294,6 +296,11 @@ const TASK_CATEGORIES = {
       { id: "w4", text: "高质量完成今日工作任务", points: 20, icon: "💼" },
       { id: "w5", text: "收到客户 / 领导好评", points: 40, icon: "🏆" },
       { id: "w6", text: "做了一次有价值的分享或汇报", points: 25, icon: "🎤" },
+      { id: "w7", text: "跳槽计划：更新简历 / 整理作品集", points: 35, icon: "📝" },
+      { id: "w8", text: "跳槽计划：投递一份意向职位", points: 40, icon: "📮" },
+      { id: "w9", text: "跳槽计划：完成一次面试准备/模拟", points: 30, icon: "🎙️" },
+      { id: "w10", text: "跳槽计划：面试通过！🎉", points: 80, icon: "🏅" },
+      { id: "w11", text: "跳槽计划：拿到 Offer！！🎊", points: 150, icon: "🎯" },
     ],
   },
 };
@@ -311,7 +318,6 @@ const REWARDS = [
   { id: "r1", name: "一杯奶茶自由☕", cost: 80, icon: "🧋", desc: "你赢得了一杯奶茶！好好犒劳自己~", tier: "小奖励" },
   { id: "r2", name: "一顿想吃的大餐", cost: 200, icon: "🍜", desc: "去吃那家想去很久的餐厅吧！", tier: "中奖励" },
   { id: "r3", name: "一次想买的小物件", cost: 150, icon: "🛍️", desc: "买那个心心念念的小东西！", tier: "中奖励" },
-  { id: "r4", name: "周末懒觉特权", cost: 60, icon: "😴", desc: "今天可以睡到自然醒，无需内疚！", tier: "小奖励" },
   { id: "r5", name: "一次下午茶", cost: 100, icon: "🍰", desc: "和朋友来一次悠闲下午茶时光", tier: "中奖励" },
   { id: "r6", name: "一次SPA / 按摩", cost: 300, icon: "💆", desc: "你努力了很久，好好放松一下！", tier: "大奖励" },
   { id: "r7", name: "一次短途旅行", cost: 500, icon: "✈️", desc: "小分队一起去旅行！你们都值得！", tier: "大奖励" },
@@ -342,6 +348,8 @@ function getDefaultState() {
     members: MEMBERS_DEF.map(m => ({ ...m, points: 0, totalPoints: 0, redeemed: [] })),
     logs: [],
     teamLogs: [],
+    spinShops: ["海底捞", "麦当劳", "沙县小吃", "火锅", "日料", "烧烤", "披萨", "麻辣烫"],
+    spinHistory: [],
   };
 }
 
@@ -349,13 +357,19 @@ function getDefaultState() {
 async function loadStateFromFirebase() {
   try {
     const db = window._firebaseDb;
-    const snapshot = await window._firebaseGet(window._firebaseRef(db, DB_PATH));
+    const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), 5000));
+    const snapshot = await Promise.race([
+      window._firebaseGet(window._firebaseRef(db, DB_PATH)),
+      timeout
+    ]);
     if (snapshot.exists()) {
       const data = snapshot.val();
       return {
         members: data.members || getDefaultState().members,
         logs: data.logs || [],
         teamLogs: data.teamLogs || [],
+        spinShops: data.spinShops || getDefaultState().spinShops,
+        spinHistory: data.spinHistory || [],
       };
     }
   } catch (e) {
@@ -367,6 +381,8 @@ async function loadStateFromFirebase() {
       members: JSON.parse(localStorage.getItem("squad_members") || "null") || getDefaultState().members,
       logs: JSON.parse(localStorage.getItem("squad_logs") || "[]"),
       teamLogs: JSON.parse(localStorage.getItem("squad_team_logs") || "[]"),
+      spinShops: JSON.parse(localStorage.getItem("squad_spin_shops") || "null") || getDefaultState().spinShops,
+      spinHistory: JSON.parse(localStorage.getItem("squad_spin_history") || "[]"),
     };
   } catch { return getDefaultState(); }
 }
@@ -378,6 +394,8 @@ function saveState(s) {
     localStorage.setItem("squad_members", JSON.stringify(s.members));
     localStorage.setItem("squad_logs", JSON.stringify(s.logs));
     localStorage.setItem("squad_team_logs", JSON.stringify(s.teamLogs));
+    localStorage.setItem("squad_spin_shops", JSON.stringify(s.spinShops));
+    localStorage.setItem("squad_spin_history", JSON.stringify(s.spinHistory));
   } catch {}
 
   // 写入 Firebase
@@ -389,6 +407,8 @@ function saveState(s) {
       members: s.members,
       logs: s.logs,
       teamLogs: s.teamLogs,
+      spinShops: s.spinShops,
+      spinHistory: s.spinHistory,
       _updatedAt: Date.now(),
     }).then(() => {
       _isSaving = false;
@@ -414,6 +434,8 @@ function startRealtimeSync() {
       state.members = data.members || state.members;
       state.logs = data.logs || [];
       state.teamLogs = data.teamLogs || [];
+      state.spinShops = data.spinShops || state.spinShops;
+      state.spinHistory = data.spinHistory || [];
       ui.syncStatus = "synced";
       render();
       setTimeout(() => { if (ui.syncStatus === "synced") { ui.syncStatus = "idle"; render(); } }, 2000);
@@ -438,6 +460,9 @@ function render() {
   const app = document.getElementById("app");
   app.innerHTML = buildApp();
   bindEvents();
+  if (ui.activeTab === "spin") {
+    setTimeout(() => drawWheel(), 0);
+  }
 }
 
 function buildApp() {
@@ -541,6 +566,7 @@ function buildApp() {
     { key: "team", label: "团队", icon: "🤝" },
     { key: "rewards", label: "奖励", icon: "🎁" },
     { key: "stats", label: "统计", icon: "📊" },
+    { key: "spin", label: "转盘", icon: "🍽️" },
   ];
   html += `<div class="nav">`;
   tabs.forEach(t => {
@@ -767,6 +793,11 @@ function buildApp() {
     html += `</div>`;
   }
 
+  // ===== SPIN =====
+  if (ui.activeTab === "spin") {
+    html += buildSpinTab();
+  }
+
   html += `</div>`; // end content
   return html;
 }
@@ -783,7 +814,307 @@ function buildNotifUI() {
   }
 }
 
-// ===== ACTIONS =====
+// ===== SPIN TAB =====
+function buildSpinTab() {
+  const shops = state.spinShops || [];
+  const history = (state.spinHistory || []).slice(-10).reverse();
+  const COLORS = ["#FF6B6B","#FF9F43","#FFE66D","#A8E063","#4ECDC4","#45B7D1","#A78BFA","#F368E0","#FF6B9D","#C44569"];
+
+  let h = `
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+    <div style="font-weight:800;font-size:20px;letter-spacing:-0.5px">今天吃什么？</div>
+    <div style="font-size:22px">🍽️</div>
+  </div>
+  <div style="color:#555;font-size:12px;margin-bottom:24px;letter-spacing:0.02em">让命运来决定吧</div>`;
+
+  // ── WHEEL AREA ──
+  h += `<div style="position:relative;display:flex;flex-direction:column;align-items:center;margin-bottom:28px">
+
+    <!-- outer glow ring -->
+    <div style="position:relative;padding:6px;border-radius:50%;background:conic-gradient(from 0deg,#FF6B6B,#FFE66D,#4ECDC4,#A78BFA,#FF6B6B);box-shadow:0 0 40px rgba(255,107,107,0.25)">
+      <div style="border-radius:50%;padding:4px;background:#0F0F14">
+        <canvas id="spinCanvas" width="260" height="260" style="display:block;border-radius:50%"></canvas>
+      </div>
+    </div>
+
+    <!-- pointer -->
+    <div style="position:absolute;top:-2px;left:50%;transform:translateX(-50%);z-index:10;filter:drop-shadow(0 2px 6px #000)">
+      <svg width="24" height="32" viewBox="0 0 24 32"><polygon points="12,32 0,0 24,0" fill="#fff"/><polygon points="12,28 3,4 21,4" fill="#FFE66D"/></svg>
+    </div>
+
+    <!-- result bubble -->
+    <div id="spinResult" style="margin-top:20px;min-height:44px;display:flex;align-items:center;justify-content:center"></div>
+
+    <!-- spin button -->
+    <button id="spinBtn" onclick="doSpin()" style="margin-top:4px;position:relative;background:linear-gradient(135deg,#FF6B6B 0%,#FF9F43 50%,#FFE66D 100%);border:none;border-radius:50px;padding:15px 52px;color:#000;font-weight:800;font-size:17px;cursor:pointer;font-family:inherit;box-shadow:0 6px 24px rgba(255,107,107,0.45),0 2px 0 rgba(0,0,0,0.3);letter-spacing:0.02em;transition:transform 0.1s,box-shadow 0.1s"
+      onmousedown="this.style.transform='scale(0.96)';this.style.boxShadow='0 3px 12px rgba(255,107,107,0.4)'"
+      onmouseup="this.style.transform='';this.style.boxShadow='0 6px 24px rgba(255,107,107,0.45),0 2px 0 rgba(0,0,0,0.3)'"
+      ontouchstart="this.style.transform='scale(0.96)'"
+      ontouchend="this.style.transform=''">
+      🎰 &nbsp;转！
+    </button>
+  </div>`;
+
+  // ── ADD SHOP ──
+  h += `<div style="background:linear-gradient(135deg,rgba(255,255,255,0.06),rgba(255,255,255,0.03));border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:18px;margin-bottom:14px">
+    <div style="font-weight:700;font-size:14px;margin-bottom:12px;display:flex;align-items:center;gap:6px"><span style="font-size:16px">➕</span> 加一家店</div>
+    <div style="display:flex;gap:8px">
+      <input id="newShopInput" type="text" placeholder="输入店名…" maxlength="10"
+        style="flex:1;background:rgba(255,255,255,0.06);border:1.5px solid rgba(255,255,255,0.12);border-radius:12px;padding:11px 14px;color:#fff;font-size:14px;outline:none;font-family:inherit;transition:border-color 0.2s"
+        onfocus="this.style.borderColor='rgba(255,230,109,0.5)'"
+        onblur="this.style.borderColor='rgba(255,255,255,0.12)'"
+        onkeydown="if(event.key==='Enter')addShop()">
+      <button onclick="addShop()" style="background:linear-gradient(135deg,#4ECDC4,#45B7D1);border:none;border-radius:12px;padding:11px 20px;color:#000;font-weight:700;font-size:14px;cursor:pointer;font-family:inherit;white-space:nowrap;box-shadow:0 4px 12px rgba(78,205,196,0.3)">加入</button>
+    </div>
+  </div>`;
+
+  // ── SHOP LIST ──
+  h += `<div style="background:linear-gradient(135deg,rgba(255,255,255,0.06),rgba(255,255,255,0.03));border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:18px;margin-bottom:14px">
+    <div style="font-weight:700;font-size:14px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:6px"><span>🏪</span> 转盘店家</div>
+      <div style="font-size:12px;color:#555;font-weight:500">${shops.length} 家</div>
+    </div>`;
+
+  if (shops.length === 0) {
+    h += `<div style="text-align:center;padding:20px 0;color:#444;font-size:13px">还没有店家，快加几个吧 🙂</div>`;
+  } else {
+    h += `<div style="display:flex;flex-wrap:wrap;gap:8px">`;
+    shops.forEach((shop, i) => {
+      const c = COLORS[i % COLORS.length];
+      h += `<div style="display:flex;align-items:center;gap:6px;background:${c}18;border:1.5px solid ${c}44;border-radius:20px;padding:6px 10px 6px 12px">
+        <div style="width:7px;height:7px;border-radius:50%;background:${c};flex-shrink:0"></div>
+        <span style="font-size:13px;font-weight:600;color:#fff">${shop}</span>
+        <button onclick="removeShop(${i})" style="background:rgba(255,255,255,0.1);border:none;border-radius:50%;width:18px;height:18px;color:#aaa;font-size:11px;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;padding:0;line-height:1;flex-shrink:0">✕</button>
+      </div>`;
+    });
+    h += `</div>`;
+  }
+  h += `</div>`;
+
+  // ── HISTORY ──
+  if (history.length > 0) {
+    h += `<div style="background:linear-gradient(135deg,rgba(255,255,255,0.06),rgba(255,255,255,0.03));border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:18px">
+      <div style="font-weight:700;font-size:14px;margin-bottom:14px;display:flex;align-items:center;gap:6px"><span>📋</span> 最近记录</div>`;
+    history.forEach((r, idx) => {
+      const isFirst = idx === 0;
+      h += `<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05)${isFirst?";border-top:none":""}">
+        <div style="width:36px;height:36px;border-radius:12px;background:rgba(255,230,109,0.12);border:1px solid rgba(255,230,109,0.2);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">🎲</div>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
+            <span style="font-size:14px;font-weight:700;color:#FFE66D">${r.result}</span>
+            ${r.final ? `<span style="font-size:10px;background:rgba(78,205,196,0.15);color:#4ECDC4;border-radius:6px;padding:2px 7px;font-weight:600;white-space:nowrap">→ ${r.final}</span>` : ''}
+          </div>
+          <div style="font-size:11px;color:#444">${r.date} ${r.time}</div>
+        </div>
+        ${!r.final ? `<button onclick="setFinal('${r.id}')" style="background:rgba(78,205,196,0.12);border:1.5px solid rgba(78,205,196,0.25);border-radius:10px;padding:6px 12px;color:#4ECDC4;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0">最终去了？</button>` : ''}
+      </div>`;
+    });
+    h += `</div>`;
+  }
+
+  return h;
+}
+
+// ===== SPIN ACTIONS =====
+function addShop() {
+  const input = document.getElementById("newShopInput");
+  if (!input) return;
+  const name = input.value.trim();
+  if (!name) return;
+  if (state.spinShops.includes(name)) { input.value = ""; return; }
+  state.spinShops = [...state.spinShops, name];
+  saveState(state);
+  input.value = "";
+  render();
+  drawWheel();
+}
+
+function removeShop(idx) {
+  state.spinShops = state.spinShops.filter((_, i) => i !== idx);
+  saveState(state);
+  render();
+  drawWheel();
+}
+
+let _spinAnimId = null;
+
+function doSpin() {
+  const shops = state.spinShops;
+  if (shops.length < 2) { alert("至少需要2家店才能转！"); return; }
+  const btn = document.getElementById("spinBtn");
+  const resultEl = document.getElementById("spinResult");
+  if (btn) btn.disabled = true;
+  if (resultEl) resultEl.textContent = "";
+
+  const totalRot = 2160 + Math.random() * 1440; // 6~10圈
+  const duration = 4000;
+  const start = performance.now();
+  const startAngle = _wheelAngle || 0;
+
+  function step(now) {
+    const elapsed = now - start;
+    const t = Math.min(elapsed / duration, 1);
+    const ease = 1 - Math.pow(1 - t, 4);
+    _wheelAngle = startAngle + totalRot * ease;
+    drawWheel(_wheelAngle);
+    if (t < 1) {
+      _spinAnimId = requestAnimationFrame(step);
+    } else {
+      _wheelAngle = _wheelAngle % 360;
+      // Figure out which slice is at top (pointer is at top = 270° in standard coords)
+      const sliceAngle = 360 / shops.length;
+      // wheel rotates clockwise; pointer at top
+      const normalised = (360 - (_wheelAngle % 360)) % 360;
+      const idx = Math.floor(normalised / sliceAngle) % shops.length;
+      const winner = shops[idx];
+
+      if (resultEl) resultEl.innerHTML = `
+        <div style="background:linear-gradient(135deg,rgba(255,107,107,0.2),rgba(255,159,67,0.15));border:1.5px solid rgba(255,107,107,0.4);border-radius:16px;padding:10px 24px;animation:pop 0.4s cubic-bezier(0.34,1.56,0.64,1)">
+          <div style="font-size:11px;color:#aaa;margin-bottom:2px;letter-spacing:0.05em">今天就吃</div>
+          <div style="font-size:20px;font-weight:800;color:#fff">${winner} <span style="color:#FFE66D">🎉</span></div>
+        </div>`;
+      if (btn) btn.disabled = false;
+
+      // Save to history
+      const now2 = new Date();
+      const record = {
+        id: Date.now().toString(36),
+        result: winner,
+        final: null,
+        date: now2.toLocaleDateString("zh-CN",{month:"numeric",day:"numeric"}),
+        time: now2.toLocaleTimeString("zh-CN",{hour:"2-digit",minute:"2-digit"}),
+      };
+      state.spinHistory = [...(state.spinHistory||[]), record];
+      saveState(state);
+      render();
+      drawWheel(_wheelAngle);
+    }
+  }
+  requestAnimationFrame(step);
+}
+
+let _wheelAngle = 0;
+
+function drawWheel(angle) {
+  if (angle === undefined) angle = _wheelAngle || 0;
+  const canvas = document.getElementById("spinCanvas");
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  const shops = state.spinShops || [];
+  const W = canvas.width, H = canvas.height;
+  const cx = W / 2, cy = H / 2;
+  const r = W / 2 - 2;
+  const COLORS = ["#FF6B6B","#FF9F43","#FFE66D","#A8E063","#4ECDC4","#45B7D1","#A78BFA","#F368E0","#FF6B9D","#C44569"];
+
+  ctx.clearRect(0, 0, W, H);
+
+  // dark background circle
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fillStyle = "#1a1a28"; ctx.fill();
+
+  if (shops.length === 0) {
+    ctx.fillStyle = "#333"; ctx.font = "14px 'PingFang SC',sans-serif";
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText("先添加店家吧 🙂", cx, cy);
+    return;
+  }
+
+  const sliceAngle = (Math.PI * 2) / shops.length;
+  const rotRad = (angle - 90) * Math.PI / 180;
+
+  shops.forEach((shop, i) => {
+    const start = rotRad + i * sliceAngle;
+    const end = start + sliceAngle;
+    const midAngle = start + sliceAngle / 2;
+    const col = COLORS[i % COLORS.length];
+
+    // slice fill with subtle gradient
+    const grad = ctx.createLinearGradient(
+      cx + Math.cos(midAngle) * r * 0.3, cy + Math.sin(midAngle) * r * 0.3,
+      cx + Math.cos(midAngle) * r, cy + Math.sin(midAngle) * r
+    );
+    grad.addColorStop(0, col + "dd");
+    grad.addColorStop(1, col);
+
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, r - 1, start, end);
+    ctx.closePath();
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // divider lines
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + Math.cos(start) * r, cy + Math.sin(start) * r);
+    ctx.strokeStyle = "rgba(0,0,0,0.35)";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // text
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(midAngle);
+    const fontSize = shops.length > 8 ? 10 : shops.length > 5 ? 12 : 13;
+    ctx.font = `700 ${fontSize}px 'PingFang SC',sans-serif`;
+    ctx.textAlign = "right";
+    ctx.textBaseline = "middle";
+    // shadow
+    ctx.shadowColor = "rgba(0,0,0,0.6)";
+    ctx.shadowBlur = 3;
+    ctx.fillStyle = "#fff";
+    const label = shop.length > 5 ? shop.slice(0, 5) + "…" : shop;
+    ctx.fillText(label, r - 14, 0);
+    ctx.shadowBlur = 0;
+    ctx.restore();
+  });
+
+  // outer ring
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.strokeStyle = "rgba(255,255,255,0.12)";
+  ctx.lineWidth = 2; ctx.stroke();
+
+  // center hub
+  const hubR = 22;
+  const hubGrad = ctx.createRadialGradient(cx - 4, cy - 4, 2, cx, cy, hubR);
+  hubGrad.addColorStop(0, "#3a3a50");
+  hubGrad.addColorStop(1, "#1a1a28");
+  ctx.beginPath(); ctx.arc(cx, cy, hubR, 0, Math.PI * 2);
+  ctx.fillStyle = hubGrad; ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,0.2)"; ctx.lineWidth = 2; ctx.stroke();
+
+  // center dot
+  ctx.beginPath(); ctx.arc(cx, cy, 5, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(255,255,255,0.5)"; ctx.fill();
+}
+
+function setFinal(recordId) {
+  const shops = state.spinShops;
+  if (!shops.length) return;
+  // Build quick picker overlay
+  const el = document.createElement("div");
+  el.style.cssText = "position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,0.7);display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(4px)";
+  let inner = `<div style="background:#1a1a2e;border-radius:24px 24px 0 0;padding:24px;width:100%;max-width:420px;max-height:80vh;overflow-y:auto">
+    <div style="font-weight:700;font-size:16px;margin-bottom:16px;text-align:center">最终去了哪家？</div>`;
+  shops.forEach(s => {
+    inner += `<div onclick="confirmFinal('${recordId}','${s.replace(/'/g,"\\'")}',this.closest('.final-picker'))"
+      style="padding:14px 16px;border-radius:12px;background:rgba(255,255,255,0.06);margin-bottom:8px;font-size:15px;cursor:pointer;font-family:inherit;text-align:center">${s}</div>`;
+  });
+  inner += `<div onclick="this.closest('.final-picker').remove()" style="padding:12px;text-align:center;color:#666;font-size:13px;cursor:pointer;margin-top:4px">取消</div></div>`;
+  el.className = "final-picker";
+  el.innerHTML = inner;
+  document.body.appendChild(el);
+}
+
+function confirmFinal(recordId, shopName, pickerEl) {
+  state.spinHistory = state.spinHistory.map(r => r.id === recordId ? {...r, final: shopName} : r);
+  saveState(state);
+  if (pickerEl) pickerEl.remove();
+  render();
+  drawWheel();
+}
+
+
 function setTab(tab) { ui.activeTab = tab; render(); }
 function selectMember(id) { ui.activeMember = id; render(); }
 
@@ -899,8 +1230,22 @@ async function init() {
     ui.syncStatus = "idle";
     render();
   } else {
-    // Firebase SDK 还没加载完，等待事件
+    const timer = setTimeout(async () => {
+      console.warn("Firebase SDK 超时，使用本地数据");
+      try {
+        state = {
+          members: JSON.parse(localStorage.getItem("squad_members") || "null") || getDefaultState().members,
+          logs: JSON.parse(localStorage.getItem("squad_logs") || "[]"),
+          teamLogs: JSON.parse(localStorage.getItem("squad_team_logs") || "[]"),
+          spinShops: JSON.parse(localStorage.getItem("squad_spin_shops") || "null") || getDefaultState().spinShops,
+          spinHistory: JSON.parse(localStorage.getItem("squad_spin_history") || "[]"),
+        };
+      } catch { state = getDefaultState(); }
+      ui.syncStatus = "idle";
+      render();
+    }, 6000);
     document.addEventListener("firebase-ready", async () => {
+      clearTimeout(timer);
       state = await loadStateFromFirebase();
       startRealtimeSync();
       ui.syncStatus = "idle";
