@@ -659,14 +659,15 @@ function buildApp() {
         <div style="color:#888;font-size:12px;margin-bottom:14px">${cat.description}</div>`;
       cat.tasks.forEach(task => {
         const done = todayTaskIds.includes(task.id);
+        const logEntry = done ? state.logs.find(l => l.date === today && l.memberId === ui.activeMember && l.taskId === task.id) : null;
         html += `<div class="task-row${done ? " done" : ""}" 
           style="background:${done?"rgba(255,255,255,0.04)":"rgba(255,255,255,0.06)"};border-radius:14px;padding:12px 14px;margin-bottom:8px;border:${done?"1px solid transparent":`1px solid ${cat.color}33`}"
           ${done ? "" : `onclick="completeTask('${task.id}','${cat.key}')"`}>
           <div class="task-icon-wrap" style="background:${done?"rgba(255,255,255,0.1)":cat.color+"33"}">${done ? "✅" : task.icon}</div>
           <div class="task-text">${task.text}</div>
-          <div style="text-align:right;flex-shrink:0">
+          <div style="text-align:right;flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:4px">
             <div style="font-size:13px;font-weight:700;color:${done?"#555":"#FFE66D"}">${done ? "完成" : "+"+task.points}</div>
-            <div style="font-size:10px;color:#555">积分</div>
+            ${done && logEntry ? `<button onclick="event.stopPropagation();undoTask(${logEntry.id})" style="background:rgba(255,107,107,0.12);border:1.5px solid rgba(255,107,107,0.25);border-radius:7px;padding:3px 8px;color:#FF6B6B;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit">撤回</button>` : `<div style="font-size:10px;color:#555">积分</div>`}
           </div>
         </div>`;
       });
@@ -742,8 +743,15 @@ function buildApp() {
 
     if (currentMember.redeemed && currentMember.redeemed.length > 0) {
       html += `<div style="margin-top:8px"><div style="font-size:13px;font-weight:700;color:#555;margin-bottom:12px">📜 兑换记录</div>`;
-      [...currentMember.redeemed].slice(-5).reverse().forEach(r => {
-        html += `<div class="redeem-log-row"><span style="font-size:20px">${r.icon}</span><span style="flex:1">${r.name}</span><span>${r.date}</span></div>`;
+      const redeemed = [...currentMember.redeemed].reverse();
+      redeemed.forEach((r, reversedIdx) => {
+        const originalIdx = currentMember.redeemed.length - 1 - reversedIdx;
+        html += `<div class="redeem-log-row">
+          <span style="font-size:20px">${r.icon}</span>
+          <span style="flex:1">${r.name}</span>
+          <span style="color:#555;font-size:12px;margin-right:8px">${r.date}</span>
+          <button onclick="undoRedeem(${originalIdx})" style="background:rgba(255,107,107,0.12);border:1.5px solid rgba(255,107,107,0.25);border-radius:8px;padding:4px 10px;color:#FF6B6B;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap">撤回</button>
+        </div>`;
       });
       html += `</div>`;
     }
@@ -1159,6 +1167,21 @@ function completeTask(taskId, category) {
   setTimeout(() => { ui.celebration = null; render(); }, 2500);
 }
 
+function undoTask(logId) {
+  const log = state.logs.find(l => l.id === logId);
+  if (!log) return;
+  state.logs = state.logs.filter(l => l.id !== logId);
+  state.members = state.members.map(m =>
+    m.id === log.memberId
+      ? { ...m, points: Math.max(0, m.points - log.points), totalPoints: Math.max(0, m.totalPoints - log.points) }
+      : m
+  );
+  saveState(state);
+  ui.celebration = { text: `已撤回「${log.taskText}」，${log.points} 积分已退还`, points: log.points, icon: "↩️" };
+  render();
+  setTimeout(() => { ui.celebration = null; render(); }, 2200);
+}
+
 function completeTeamTask(taskId) {
   const weekKey = getWeekKey();
   const key = `${taskId}-${weekKey}`;
@@ -1190,6 +1213,22 @@ function redeemReward(rewardId) {
   saveState(state);
   ui.rewardModal = reward;
   render();
+}
+
+function undoRedeem(idx) {
+  const member = state.members.find(m => m.id === ui.activeMember);
+  if (!member || !member.redeemed || !member.redeemed[idx]) return;
+  const r = member.redeemed[idx];
+  const newRedeemed = member.redeemed.filter((_, i) => i !== idx);
+  state.members = state.members.map(m =>
+    m.id === ui.activeMember
+      ? { ...m, points: m.points + r.cost, redeemed: newRedeemed }
+      : m
+  );
+  saveState(state);
+  ui.celebration = { text: `已撤回「${r.name}」，${r.cost} 积分已退还`, points: r.cost, icon: "↩️" };
+  render();
+  setTimeout(() => { ui.celebration = null; render(); }, 2200);
 }
 
 function closeReward() { ui.rewardModal = null; render(); }
